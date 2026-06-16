@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="fuel.">
+<title>fuel.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #08080f;
+    --surface: #111118;
+    --border: #1a1a28;
+    --text: #f0ede8;
+    --muted: #6b6b7a;
+    --dim: #2e2e40;
+    --accent: #f97316;
+    --good: #22c55e;
+    --danger: #ef4444;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  input, button { font-family: var(--sans); }
+  input { outline: none; }
+  button { cursor: pointer; }
+  #app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 0; }
+  .app-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .app-name span { color: var(--accent); }
+  .settings-btn { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: var(--muted); font-size: 16px; line-height: 1; transition: all 0.2s; }
+  .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* View switcher */
+  .view-switcher { display: flex; gap: 6px; padding: 14px 24px 0; }
+  .view-btn { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; font-family: var(--sans); transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase; }
+  .view-btn.active { border-color: var(--accent); background: rgba(249,115,22,0.1); color: var(--accent); }
+
+  /* Date nav */
+  .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px 0; gap: 8px; }
+  .nav-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; color: var(--muted); font-size: 16px; font-weight: 700; transition: all 0.2s; line-height: 1; }
+  .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .date-center { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 2px; }
+  .date-label { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+  .date-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .yesterday-btn { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2); border-radius: 6px; padding: 4px 10px; color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-top: 3px; transition: all 0.2s; }
+  .yesterday-btn:hover { background: rgba(249,115,22,0.18); }
+  .yesterday-btn.hidden { display: none; }
+
+  /* ── DAILY VIEW ── */
+  .ring-section { padding: 16px 24px 8px; display: flex; flex-direction: column; align-items: center; }
+  .ring-wrap { position: relative; width: 200px; height: 200px; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-number { font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -2px; }
+  .ring-unit { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+  .ring-remaining { font-family: var(--mono); font-size: 12px; margin-top: 6px; }
+  .ring-stats { display: flex; gap: 28px; margin-top: 14px; }
+  .stat { text-align: center; }
+  .stat-num { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; }
+  .stat-div { width: 1px; background: var(--border); }
+
+  /* Input section */
+  .input-section { padding: 8px 24px 0; flex: 1; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; font-family: var(--sans); transition: all 0.2s; letter-spacing: 0.3px; }
+  .tab-btn.active { border-color: var(--accent); background: rgba(249,115,22,0.1); color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .field { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 15px; transition: border-color 0.2s; }
+  .field:focus { border-color: rgba(249,115,22,0.5); }
+  .field::placeholder { color: var(--muted); }
+  .search-row { display: flex; gap: 8px; }
+  .search-row .field { flex: 1; }
+  .go-btn { background: var(--accent); border: none; border-radius: 12px; padding: 0 20px; color: #fff; font-size: 20px; font-weight: 700; transition: opacity 0.2s; white-space: nowrap; }
+  .go-btn:hover { opacity: 0.85; }
+  .go-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .error-msg { color: var(--danger); font-size: 13px; margin-top: 8px; }
+  .result-card { background: var(--surface); border: 1px solid rgba(249,115,22,0.4); border-radius: 14px; padding: 16px; margin-top: 12px; animation: slideUp 0.2s ease; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .result-name { font-size: 16px; font-weight: 700; }
+  .result-serving { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .result-cal { font-family: var(--mono); font-size: 32px; font-weight: 700; color: var(--accent); margin-top: 8px; }
+  .result-cal span { font-size: 14px; color: var(--muted); }
+  .add-btn { background: var(--accent); border: none; border-radius: 10px; padding: 10px 22px; color: #fff; font-weight: 700; font-size: 14px; margin-top: 12px; transition: opacity 0.2s; }
+  .add-btn:hover { opacity: 0.85; }
+  .freq-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 28px 0; }
+  .freq-item { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border); }
+  .freq-item:last-child { border-bottom: none; }
+  .freq-name { font-size: 14px; font-weight: 600; }
+  .freq-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .freq-add { background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.25); border-radius: 8px; padding: 7px 16px; color: var(--accent); font-weight: 700; font-size: 16px; transition: all 0.2s; }
+  .freq-add:hover { background: rgba(249,115,22,0.2); }
+  .manual-fields { display: flex; flex-direction: column; gap: 10px; }
+  .primary-btn { width: 100%; background: var(--accent); border: none; border-radius: 12px; padding: 14px; color: #fff; font-size: 15px; font-weight: 700; font-family: var(--sans); transition: opacity 0.2s; }
+  .primary-btn:hover { opacity: 0.85; }
+  .log-section { padding: 20px 24px 40px; }
+  .section-title { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+  .log-item { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border-radius: 12px; padding: 13px 16px; margin-bottom: 8px; animation: slideUp 0.2s ease; }
+  .log-name { font-size: 14px; font-weight: 600; }
+  .log-time { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .log-right { display: flex; align-items: center; gap: 4px; }
+  .log-cal { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--accent); }
+  .remove-btn { background: none; border: none; color: var(--dim); font-size: 20px; padding: 0 0 0 8px; line-height: 1; transition: color 0.2s; }
+  .remove-btn:hover { color: var(--danger); }
+
+  /* ── WEEKLY VIEW ── */
+  .weekly-view, .monthly-view { padding: 16px 24px 40px; flex: 1; }
+  .period-stats { display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+  .pstat { flex: 1; padding: 14px 12px; text-align: center; border-right: 1px solid var(--border); }
+  .pstat:last-child { border-right: none; }
+  .pstat-num { font-family: var(--mono); font-size: 16px; font-weight: 700; }
+  .pstat-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; }
+  .pstat-num.good { color: var(--good); }
+  .pstat-num.danger { color: var(--danger); }
+  .pstat-num.accent { color: var(--accent); }
+
+  /* Bar chart */
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; margin-bottom: 8px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar-wrap { width: 100%; flex: 1; display: flex; align-items: flex-end; position: relative; }
+  .bar-bg { position: absolute; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 4px 4px 0 0; height: 100%; border: 1px solid var(--border); }
+  .bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 4px 4px 0 0; transition: height 0.5s cubic-bezier(.4,0,.2,1); }
+  .bar-goal-line { position: absolute; left: -2px; right: -2px; height: 1px; background: rgba(249,115,22,0.4); }
+  .bar-day { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .bar-val { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+
+  /* Weekly day list */
+  .week-list { display: flex; flex-direction: column; gap: 6px; }
+  .week-item { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 10px; padding: 11px 14px; }
+  .week-item.today { border: 1px solid rgba(249,115,22,0.3); }
+  .week-day { font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--muted); width: 28px; text-transform: uppercase; }
+  .week-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .week-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .week-cal { font-family: var(--mono); font-size: 12px; font-weight: 700; width: 44px; text-align: right; }
+  .week-badge { font-size: 10px; width: 16px; text-align: center; }
+
+  /* ── MONTHLY VIEW ── */
+  .cal-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 3px; }
+  .cal-dow { font-family: var(--mono); font-size: 9px; color: var(--muted); text-align: center; letter-spacing: 0.5px; padding: 4px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 20px; }
+  .cal-day { aspect-ratio: 1; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 700; cursor: default; transition: transform 0.1s; position: relative; }
+  .cal-day.empty { background: transparent; }
+  .cal-day.no-data { background: var(--surface); color: var(--muted); }
+  .cal-day.on-track { background: rgba(34,197,94,0.15); color: var(--good); border: 1px solid rgba(34,197,94,0.25); }
+  .cal-day.over { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+  .cal-day.today-mark { box-shadow: 0 0 0 2px var(--accent); }
+  .cal-day.future { background: transparent; color: var(--dim); }
+  .cal-pct { font-size: 7px; color: inherit; opacity: 0.7; margin-top: 1px; }
+
+  /* Modal */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: flex-end; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: #12121c; border: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 430px; animation: modalUp 0.25s ease; }
+  @keyframes modalUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .modal-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  .modal-group { margin-bottom: 16px; }
+  .api-note { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .modal-save { width: 100%; background: var(--accent); border: none; border-radius: 12px; padding: 14px; color: #fff; font-size: 15px; font-weight: 700; font-family: var(--sans); margin-top: 4px; }
+  .modal-cancel { width: 100%; background: none; border: 1px solid var(--border); border-radius: 12px; padding: 14px; color: var(--muted); font-size: 15px; font-weight: 700; font-family: var(--sans); margin-top: 10px; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .photo-row { display: flex; gap: 8px; margin-top: 8px; }
+  .photo-btn { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 0; color: var(--muted); font-size: 12px; font-weight: 700; font-family: var(--sans); transition: all 0.2s; }
+  .photo-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .photo-btn.danger-btn { color: var(--danger); border-color: rgba(239,68,68,0.3); }
+  .photo-btn.danger-btn:hover { border-color: var(--danger); }
+  #photo-preview { width: 100%; border-radius: 12px; margin-top: 8px; max-height: 200px; object-fit: cover; border: 1px solid var(--border); }
+
+  .view-panel { display: none; }
+  .view-panel.active { display: flex; flex-direction: column; flex: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="app-name">fuel<span>.</span></div>
+    <button class="settings-btn" onclick="openSettings()">⚙</button>
+  </div>
+
+  <!-- View switcher -->
+  <div class="view-switcher">
+    <button class="view-btn active" onclick="switchView('daily', this)">Daily</button>
+    <button class="view-btn" onclick="switchView('weekly', this)">Weekly</button>
+    <button class="view-btn" onclick="switchView('monthly', this)">Monthly</button>
+  </div>
+
+  <!-- ── DAILY PANEL ── -->
+  <div class="view-panel active" id="panel-daily">
+    <div class="date-nav">
+      <button class="nav-btn" id="prev-btn" onclick="shiftDay(-1)">←</button>
+      <div class="date-center">
+        <div class="date-label" id="date-label"></div>
+        <div class="date-sub" id="date-sub"></div>
+        <button class="yesterday-btn hidden" id="yesterday-btn" onclick="goYesterday()">YESTERDAY</button>
+      </div>
+      <button class="nav-btn" id="next-btn" onclick="shiftDay(1)">→</button>
+    </div>
+
+    <div class="ring-section">
+      <div class="ring-wrap">
+        <svg width="200" height="200">
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#1a1a28" stroke-width="12"/>
+          <circle cx="100" cy="100" r="88" fill="none" id="ring-progress"
+            stroke="#f97316" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="0 552.9"
+            style="transition: stroke-dasharray 0.6s cubic-bezier(.4,0,.2,1); transform: rotate(-90deg); transform-origin: 100px 100px;"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-number" id="ring-number">0</div>
+          <div class="ring-unit">CALORIES</div>
+          <div class="ring-remaining" id="ring-remaining"></div>
+        </div>
+      </div>
+      <div class="ring-stats">
+        <div class="stat">
+          <div class="stat-num" id="stat-goal">2500</div>
+          <div class="stat-label">Goal</div>
+        </div>
+        <div class="stat-div"></div>
+        <div class="stat">
+          <div class="stat-num" id="stat-entries">0</div>
+          <div class="stat-label">Entries</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-section">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('ai', this)">AI Lookup</button>
+        <button class="tab-btn" onclick="switchTab('frequent', this)">Frequent</button>
+        <button class="tab-btn" onclick="switchTab('manual', this)">Manual</button>
+      </div>
+      <div class="tab-content active" id="tab-ai">
+        <div class="search-row">
+          <input class="field" id="ai-query" type="text" placeholder="Describe food (optional with photo)..."
+            onkeydown="if(event.key==='Enter') doAILookup()">
+          <button class="go-btn" id="go-btn" onclick="doAILookup()">→</button>
+        </div>
+        <div class="photo-row">
+          <button class="photo-btn" onclick="document.getElementById('camera-input').click()">📷 Camera</button>
+          <button class="photo-btn" onclick="document.getElementById('library-input').click()">🖼 Library</button>
+          <button class="photo-btn danger-btn" id="clear-photo-btn" onclick="clearPhoto()" style="display:none">✕ Clear</button>
+        </div>
+        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+        <input type="file" id="library-input" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+        <img id="photo-preview" style="display:none">
+        <div class="error-msg" id="ai-error" style="display:none"></div>
+        <div class="result-card" id="result-card" style="display:none">
+          <div class="result-name" id="result-name"></div>
+          <div class="result-serving" id="result-serving"></div>
+          <div class="result-cal" id="result-cal"></div>
+          <button class="add-btn" onclick="addResult()">+ Add to log</button>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-frequent">
+        <div id="frequent-list"></div>
+      </div>
+      <div class="tab-content" id="tab-manual">
+        <div class="manual-fields">
+          <input class="field" id="manual-name" type="text" placeholder="Food name">
+          <input class="field" id="manual-cal" type="number" placeholder="Calories" inputmode="numeric"
+            onkeydown="if(event.key==='Enter') addManual()">
+          <button class="primary-btn" onclick="addManual()">Add to log</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-section" id="log-section" style="display:none">
+      <div class="section-title" id="log-title">Today's log</div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+
+  <!-- ── WEEKLY PANEL ── -->
+  <div class="view-panel" id="panel-weekly">
+    <div class="date-nav">
+      <button class="nav-btn" id="wprev-btn" onclick="shiftWeek(-1)">←</button>
+      <div class="date-center">
+        <div class="date-label" id="week-label"></div>
+        <div class="date-sub" id="week-sub"></div>
+      </div>
+      <button class="nav-btn" id="wnext-btn" onclick="shiftWeek(1)">→</button>
+    </div>
+    <div class="weekly-view">
+      <div class="period-stats" id="week-stats"></div>
+      <div class="bar-chart" id="week-bars"></div>
+      <div class="week-list" id="week-list"></div>
+    </div>
+  </div>
+
+  <!-- ── MONTHLY PANEL ── -->
+  <div class="view-panel" id="panel-monthly">
+    <div class="date-nav">
+      <button class="nav-btn" id="mprev-btn" onclick="shiftMonth(-1)">←</button>
+      <div class="date-center">
+        <div class="date-label" id="month-label"></div>
+      </div>
+      <button class="nav-btn" id="mnext-btn" onclick="shiftMonth(1)">→</button>
+    </div>
+    <div class="monthly-view">
+      <div class="period-stats" id="month-stats"></div>
+      <div class="cal-grid-header" id="cal-header"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Settings</div>
+    <div class="modal-sub">Customize your daily targets</div>
+    <div class="modal-group">
+      <div class="modal-label">Daily Calorie Goal</div>
+      <input class="field" id="goal-input" type="number" placeholder="2500" inputmode="numeric">
+    </div>
+    <div class="modal-group">
+      <div class="modal-label">Anthropic API Key</div>
+      <input class="field" id="api-key-input" type="password" placeholder="sk-ant-...">
+      <div class="api-note">Required for AI food lookup. Stored only on your device, never sent anywhere except Anthropic's API.</div>
+    </div>
+    <button class="modal-save" onclick="saveSettings()">Save</button>
+    <button class="modal-cancel" onclick="closeSettings()">Cancel</button>
+  </div>
+</div>
+
+<script>
+const CIRC = 2 * Math.PI * 88;
+
+let state = {
+  goal: 2500,
+  apiKey: '',
+  log: [],
+  frequent: [],
+  aiResult: null,
+  activeDate: null,
+  weekOffset: 0,   // 0 = current week
+  monthOffset: 0,  // 0 = current month
+};
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+function todayDate() {
+  const d = new Date(); d.setHours(0,0,0,0); return d;
+}
+function dateKey(d) {
+  return `fuel_log_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function isToday(d) { return d.getTime() === todayDate().getTime(); }
+function isYesterday(d) {
+  const y = todayDate(); y.setDate(y.getDate()-1); return d.getTime() === y.getTime();
+}
+function getDayTotal(d) {
+  const log = JSON.parse(localStorage.getItem(dateKey(d)) || '[]');
+  return log.reduce((s,e) => s + e.calories, 0);
+}
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function load() {
+  state.goal = parseInt(localStorage.getItem('fuel_goal') || '2500');
+  state.apiKey = localStorage.getItem('fuel_apikey') || '';
+  state.frequent = JSON.parse(localStorage.getItem('fuel_frequent') || '[]');
+  state.activeDate = todayDate();
+  loadDayLog();
+}
+function loadDayLog() {
+  state.log = JSON.parse(localStorage.getItem(dateKey(state.activeDate)) || '[]');
+}
+function persist() {
+  localStorage.setItem(dateKey(state.activeDate), JSON.stringify(state.log));
+  localStorage.setItem('fuel_frequent', JSON.stringify(state.frequent));
+}
+
+// ── View switcher ─────────────────────────────────────────────────────────────
+let currentView = 'daily';
+function switchView(name, btn) {
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+  currentView = name;
+  if (name === 'weekly') renderWeekly();
+  if (name === 'monthly') renderMonthly();
+}
+
+// ── Daily navigation ──────────────────────────────────────────────────────────
+function shiftDay(delta) {
+  const d = new Date(state.activeDate);
+  d.setDate(d.getDate() + delta);
+  if (d > todayDate()) return;
+  state.activeDate = d;
+  loadDayLog();
+  updateDateUI();
+  renderDaily();
+}
+function goYesterday() {
+  const y = todayDate(); y.setDate(y.getDate()-1);
+  state.activeDate = y;
+  loadDayLog(); updateDateUI(); renderDaily();
+}
+function updateDateUI() {
+  const d = state.activeDate;
+  let label, sub;
+  if (isToday(d)) { label='TODAY'; sub=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase(); }
+  else if (isYesterday(d)) { label='YESTERDAY'; sub=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}).toUpperCase(); }
+  else { label=d.toLocaleDateString('en-US',{weekday:'long'}).toUpperCase(); sub=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}).toUpperCase(); }
+  document.getElementById('date-label').textContent = label;
+  document.getElementById('date-sub').textContent = sub;
+  document.getElementById('next-btn').disabled = isToday(d);
+  const yBtn = document.getElementById('yesterday-btn');
+  isToday(d) ? yBtn.classList.remove('hidden') : yBtn.classList.add('hidden');
+  const logTitle = document.getElementById('log-title');
+  if (isToday(d)) logTitle.textContent="Today's log";
+  else if (isYesterday(d)) logTitle.textContent="Yesterday's log";
+  else logTitle.textContent=d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})+' log';
+}
+
+// ── Daily render ──────────────────────────────────────────────────────────────
+function renderDaily() {
+  const total = state.log.reduce((s,e) => s+e.calories, 0);
+  const pct = Math.min(total/state.goal, 1);
+  const over = total > state.goal;
+  document.getElementById('ring-number').textContent = total.toLocaleString();
+  document.getElementById('ring-number').style.color = over ? 'var(--danger)' : 'var(--text)';
+  document.getElementById('ring-progress').setAttribute('stroke-dasharray', `${pct*CIRC} ${CIRC}`);
+  document.getElementById('ring-progress').setAttribute('stroke', over ? '#ef4444' : '#f97316');
+  const rem = document.getElementById('ring-remaining');
+  rem.textContent = over ? `+${(total-state.goal).toLocaleString()} over` : `${(state.goal-total).toLocaleString()} left`;
+  rem.style.color = over ? 'var(--danger)' : 'var(--accent)';
+  document.getElementById('stat-goal').textContent = state.goal.toLocaleString();
+  document.getElementById('stat-entries').textContent = state.log.length;
+
+  const fl = document.getElementById('frequent-list');
+  if (state.frequent.length === 0) {
+    fl.innerHTML = '<div class="freq-empty">Foods you log often will appear here.</div>';
+  } else {
+    fl.innerHTML = state.frequent.slice(0,12).map(f => `
+      <div class="freq-item">
+        <div><div class="freq-name">${esc(f.name)}</div><div class="freq-meta">${f.calories} kcal · logged ${f.count}×</div></div>
+        <button class="freq-add" onclick='addFrequent(${JSON.stringify(f.name)}, ${f.calories})'>+</button>
+      </div>`).join('');
+  }
+
+  const ls = document.getElementById('log-section');
+  const ll = document.getElementById('log-list');
+  if (state.log.length === 0) { ls.style.display='none'; }
+  else {
+    ls.style.display='block';
+    ll.innerHTML = [...state.log].reverse().map(e => `
+      <div class="log-item">
+        <div><div class="log-name">${esc(e.name)}</div><div class="log-time">${e.time}</div></div>
+        <div class="log-right">
+          <div class="log-cal">${e.calories}</div>
+          <button class="remove-btn" onclick="removeEntry(${e.id})">×</button>
+        </div>
+      </div>`).join('');
+  }
+}
+
+// ── Weekly render ─────────────────────────────────────────────────────────────
+function getWeekStart(offset) {
+  const t = todayDate();
+  const day = t.getDay(); // 0=Sun
+  const sun = new Date(t); sun.setDate(t.getDate() - day + (offset * 7));
+  return sun;
+}
+
+function shiftWeek(delta) {
+  state.weekOffset += delta;
+  const t = todayDate();
+  const ws = getWeekStart(state.weekOffset);
+  if (ws > t) { state.weekOffset -= delta; return; }
+  renderWeekly();
+}
+
+function renderWeekly() {
+  const weekStart = getWeekStart(state.weekOffset);
+  const days = [];
+  for (let i=0; i<7; i++) {
+    const d = new Date(weekStart); d.setDate(weekStart.getDate()+i);
+    const total = d > todayDate() ? null : getDayTotal(d);
+    days.push({ d, total });
+  }
+
+  // Label
+  const ws = weekStart;
+  const we = days[6].d;
+  document.getElementById('week-label').textContent =
+    state.weekOffset === 0 ? 'THIS WEEK' : state.weekOffset === -1 ? 'LAST WEEK' :
+    ws.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase() + ' WEEK';
+  document.getElementById('week-sub').textContent =
+    ws.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase() + ' – ' +
+    we.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase();
+  document.getElementById('wnext-btn').disabled = state.weekOffset >= 0;
+
+  // Stats
+  const logged = days.filter(d => d.total !== null && d.total > 0);
+  const totals = logged.map(d => d.total);
+  const weekTotal = totals.reduce((s,v) => s+v, 0);
+  const avgDaily = logged.length ? Math.round(weekTotal / logged.length) : 0;
+  const onTrack = days.filter(d => d.total !== null && d.total > 0 && d.total <= state.goal).length;
+  const weekGoal = state.goal * 7;
+
+  document.getElementById('week-stats').innerHTML = `
+    <div class="pstat"><div class="pstat-num ${weekTotal > weekGoal ? 'danger' : 'accent'}">${weekTotal > 999 ? (weekTotal/1000).toFixed(1)+'k' : weekTotal}</div><div class="pstat-label">Total</div></div>
+    <div class="pstat"><div class="pstat-num">${avgDaily || '—'}</div><div class="pstat-label">Daily Avg</div></div>
+    <div class="pstat"><div class="pstat-num good">${onTrack}</div><div class="pstat-label">On Track</div></div>
+    <div class="pstat"><div class="pstat-num ${(7-onTrack-days.filter(d=>d.total===null||d.total===0).length) > 0 ? 'danger' : 'muted'}">${days.filter(d => d.total !== null && d.total > 0 && d.total > state.goal).length}</div><div class="pstat-label">Over Goal</div></div>
+  `;
+
+  // Bar chart
+  const maxVal = Math.max(...days.map(d => d.total||0), state.goal);
+  const goalPct = (state.goal / maxVal) * 100;
+  document.getElementById('week-bars').innerHTML = days.map(({d, total}) => {
+    const dayName = d.toLocaleDateString('en-US',{weekday:'short'}).slice(0,1).toUpperCase();
+    const isFuture = d > todayDate();
+    const isActive = isToday(d);
+    const pct = total ? Math.min((total/maxVal)*100, 100) : 0;
+    const color = !total ? 'var(--dim)' : total > state.goal ? 'var(--danger)' : isActive ? 'var(--accent)' : 'var(--good)';
+    return `<div class="bar-col">
+      <div class="bar-val">${total && !isFuture ? (total>999?(total/1000).toFixed(1)+'k':total) : ''}</div>
+      <div class="bar-wrap">
+        <div class="bar-bg"></div>
+        <div class="bar-fill" style="height:${pct}%;background:${color}"></div>
+        <div class="bar-goal-line" style="bottom:${goalPct}%"></div>
+      </div>
+      <div class="bar-day" style="color:${isActive?'var(--accent)':'var(--muted)'}">${dayName}</div>
+    </div>`;
+  }).join('');
+
+  // Day list
+  document.getElementById('week-list').innerHTML = days.map(({d, total}) => {
+    const isFuture = d > todayDate();
+    const isTod = isToday(d);
+    const pct = total ? Math.min((total/state.goal)*100, 100) : 0;
+    const color = !total || isFuture ? 'var(--dim)' : total > state.goal ? 'var(--danger)' : 'var(--good)';
+    const badge = isFuture ? '' : !total ? '·' : total > state.goal ? '↑' : '✓';
+    const badgeColor = total > state.goal ? 'var(--danger)' : 'var(--good)';
+    return `<div class="week-item${isTod?' today':''}">
+      <div class="week-day">${d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase()}</div>
+      <div class="week-bar-track"><div class="week-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="week-cal" style="color:${color}">${total && !isFuture ? total.toLocaleString() : '—'}</div>
+      <div class="week-badge" style="color:${badgeColor}">${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Monthly render ─────────────────────────────────────────────────────────────
+function getMonthStart(offset) {
+  const t = todayDate();
+  return new Date(t.getFullYear(), t.getMonth() + offset, 1);
+}
+
+function shiftMonth(delta) {
+  state.monthOffset += delta;
+  const ms = getMonthStart(state.monthOffset);
+  const t = todayDate();
+  if (ms > new Date(t.getFullYear(), t.getMonth(), 1)) { state.monthOffset -= delta; return; }
+  renderMonthly();
+}
+
+function renderMonthly() {
+  const ms = getMonthStart(state.monthOffset);
+  const t = todayDate();
+  const isCurrentMonth = ms.getMonth() === t.getMonth() && ms.getFullYear() === t.getFullYear();
+
+  document.getElementById('month-label').textContent =
+    ms.toLocaleDateString('en-US',{month:'long',year:'numeric'}).toUpperCase();
+  document.getElementById('mnext-btn').disabled = isCurrentMonth;
+
+  const daysInMonth = new Date(ms.getFullYear(), ms.getMonth()+1, 0).getDate();
+  const firstDow = ms.getDay();
+
+  // Calendar header
+  document.getElementById('cal-header').innerHTML =
+    ['S','M','T','W','T','F','S'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  // Build grid
+  let cells = [];
+  for (let i=0; i<firstDow; i++) cells.push({empty:true});
+  for (let i=1; i<=daysInMonth; i++) {
+    const d = new Date(ms.getFullYear(), ms.getMonth(), i);
+    const isFuture = d > t;
+    const isTod = isToday(d);
+    const total = isFuture ? null : getDayTotal(d);
+    cells.push({ day: i, d, total, isFuture, isTod });
+  }
+
+  // Stats
+  const logged = cells.filter(c => !c.empty && !c.isFuture && c.total > 0);
+  const monthTotal = logged.reduce((s,c) => s+c.total, 0);
+  const avgDaily = logged.length ? Math.round(monthTotal/logged.length) : 0;
+  const onTrack = logged.filter(c => c.total <= state.goal).length;
+  const overDays = logged.filter(c => c.total > state.goal).length;
+
+  document.getElementById('month-stats').innerHTML = `
+    <div class="pstat"><div class="pstat-num accent">${logged.length}</div><div class="pstat-label">Logged</div></div>
+    <div class="pstat"><div class="pstat-num">${avgDaily||'—'}</div><div class="pstat-label">Daily Avg</div></div>
+    <div class="pstat"><div class="pstat-num good">${onTrack}</div><div class="pstat-label">On Track</div></div>
+    <div class="pstat"><div class="pstat-num ${overDays>0?'danger':'muted'}">${overDays}</div><div class="pstat-label">Over Goal</div></div>
+  `;
+
+  document.getElementById('cal-grid').innerHTML = cells.map(c => {
+    if (c.empty) return `<div class="cal-day empty"></div>`;
+    if (c.isFuture) return `<div class="cal-day future">${c.day}</div>`;
+    const hasData = c.total > 0;
+    let cls = hasData ? (c.total > state.goal ? 'over' : 'on-track') : 'no-data';
+    if (c.isTod) cls += ' today-mark';
+    const pct = hasData ? Math.round((c.total/state.goal)*100) : '';
+    return `<div class="cal-day ${cls}">
+      ${c.day}
+      ${hasData ? `<div class="cal-pct">${pct}%</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function addEntry(name, calories) {
+  const now = new Date();
+  const time = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  state.log.push({ id: Date.now(), name, calories, time });
+  const idx = state.frequent.findIndex(f => f.name.toLowerCase()===name.toLowerCase());
+  if (idx>=0) { state.frequent[idx].count++; state.frequent[idx].calories=calories; }
+  else { state.frequent.push({ name, calories, count:1 }); }
+  state.frequent.sort((a,b) => b.count-a.count);
+  if (state.frequent.length>30) state.frequent=state.frequent.slice(0,30);
+  persist(); renderDaily();
+}
+function removeEntry(id) { state.log=state.log.filter(e=>e.id!==id); persist(); renderDaily(); }
+function addFrequent(name, calories) { addEntry(name, calories); }
+function addManual() {
+  const name = document.getElementById('manual-name').value.trim();
+  const cal = parseInt(document.getElementById('manual-cal').value);
+  if (!name||!cal||cal<=0) return;
+  addEntry(name,cal);
+  document.getElementById('manual-name').value='';
+  document.getElementById('manual-cal').value='';
+}
+
+// ── Photo handling ────────────────────────────────────────────────────────────
+let photoBase64 = null;
+let photoMediaType = 'image/jpeg';
+
+function handlePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  photoMediaType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    photoBase64 = dataUrl.split(',')[1];
+    const preview = document.getElementById('photo-preview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    document.getElementById('clear-photo-btn').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function clearPhoto() {
+  photoBase64 = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('clear-photo-btn').style.display = 'none';
+}
+
+// ── AI Lookup ─────────────────────────────────────────────────────────────────
+async function doAILookup() {
+  const query = document.getElementById('ai-query').value.trim();
+  if (!query && !photoBase64) { showError('Enter a food description or take a photo.'); return; }
+  if (!state.apiKey) { showError('Add your Anthropic API key in Settings (⚙) to use AI lookup.'); return; }
+  const btn = document.getElementById('go-btn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div>';
+  hideResult(); hideError();
+  try {
+    const systemPrompt = 'You are a precise nutrition database. Respond ONLY with a valid JSON object — no markdown, no backticks, no explanation. Format: {"name":"descriptive food name","calories":number,"serving":"exact serving description"}. If given a photo, visually identify all foods and estimate portion sizes. For specific weights, calculate exactly. For brand names use actual product data. Always return a single specific calorie number.';
+    let userContent;
+    if (photoBase64) {
+      userContent = [
+        { type: 'image', source: { type: 'base64', media_type: photoMediaType, data: photoBase64 } },
+        { type: 'text', text: query ? 'Estimate calories. Context: ' + query : 'Estimate total calories for everything in this meal photo.' }
+      ];
+    } else {
+      userContent = 'Calories in: ' + query;
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({
+        model:'claude-haiku-4-5', max_tokens:200,
+        system: systemPrompt,
+        messages:[{role:'user', content: userContent}]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const result = JSON.parse(data.content[0].text.trim());
+    state.aiResult=result; showResult(result);
+  } catch(e) { showError('Could not look up that food. Check your API key or try manual entry.'); console.error(e); }
+  btn.disabled=false; btn.innerHTML='→';
+}
+function showResult(r) {
+  document.getElementById('result-name').textContent=r.name;
+  document.getElementById('result-serving').textContent=r.serving;
+  document.getElementById('result-cal').innerHTML=`${r.calories} <span>kcal</span>`;
+  document.getElementById('result-card').style.display='block';
+}
+function hideResult() { document.getElementById('result-card').style.display='none'; state.aiResult=null; }
+function showError(msg) { const el=document.getElementById('ai-error'); el.textContent=msg; el.style.display='block'; }
+function hideError() { document.getElementById('ai-error').style.display='none'; }
+function addResult() {
+  if (!state.aiResult) return;
+  addEntry(state.aiResult.name, state.aiResult.calories);
+  hideResult(); document.getElementById('ai-query').value='';
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('goal-input').value=state.goal;
+  document.getElementById('api-key-input').value=state.apiKey;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('overlay').classList.remove('open'); }
+function handleOverlayClick(e) { if (e.target===document.getElementById('overlay')) closeSettings(); }
+function saveSettings() {
+  const g=parseInt(document.getElementById('goal-input').value);
+  if (g>0) { state.goal=g; localStorage.setItem('fuel_goal',g); }
+  const key=document.getElementById('api-key-input').value.trim();
+  state.apiKey=key; localStorage.setItem('fuel_apikey',key);
+  closeSettings(); renderDaily();
+  if (currentView==='weekly') renderWeekly();
+  if (currentView==='monthly') renderMonthly();
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+load();
+updateDateUI();
+renderDaily();
+
+if (!state.apiKey) {
+  setTimeout(() => {
+    document.getElementById('ai-error').textContent='Add your Anthropic API key in Settings (⚙) to enable AI food lookup.';
+    document.getElementById('ai-error').style.display='block';
+  }, 500);
+}
+</script>
+</body>
+</html>
